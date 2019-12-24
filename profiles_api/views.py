@@ -4,6 +4,7 @@ from rest_framework import status, viewsets, filters
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.settings import api_settings
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 
 from profiles_api import (
     serializers,
@@ -33,7 +34,7 @@ class HelloApiView(APIView):
         serializers = self.serializer_class(data=request.data)
 
         if serializers.is_valid():
-            name  = serializers.validated_data.get('name')
+            name    = serializers.validated_data.get('name')
             message = f'Hello {name}'
             return Response({
                 'message': message
@@ -87,7 +88,7 @@ class HelloViewSet(viewsets.ViewSet):
         serializer = self.serializer_class(data=request.data)
 
         if serializer.is_valid():
-            name = serializer.validated_data.get('name')
+            name    = serializer.validated_data.get('name')
             message = f'Hello {name}'
             return Response({
                 'message': message
@@ -128,12 +129,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     # def __init__(self, arg):
     #     super(UserProfileViewSet, self).__init__()
     #     self.arg = arg
-    serializer_class = serializers.UserProfileSerializer
-    queryset = models.UserProfile.objects.all()
-    authentication_classes = (TokenAuthentication, )
-    permission_classes = (permissions.UpdateOwnProfile, )
-    filter_backends = (filters.SearchFilter, )
-    search_fields = ('name', 'email', )
+    serializer_class        = serializers.UserProfileSerializer
+    queryset                = models.UserProfile.objects.all()
+    authentication_classes  = (TokenAuthentication, )
+    permission_classes      = (permissions.UpdateOwnProfile, )
+    filter_backends         = (filters.SearchFilter, )
+    search_fields           = ('name', 'email', )
 
 class UserLoginApiView(ObtainAuthToken):
     """Handle creating user authentication tokens"""
@@ -142,3 +143,23 @@ class UserLoginApiView(ObtainAuthToken):
     #     super(UserLoginApiView, self).__init__()
     #     self.arg = arg
     renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
+
+
+class UserProfileFeedViewSet(viewsets.ModelViewSet):
+    """Handle creating, reading and updating profile feed items"""
+
+    # def __init__(self, arg):
+    #     super(UserProfileFeedViewSet, self).__init__()
+    #     self.arg = arg
+    authentication_classes  = (TokenAuthentication, )
+    serializer_class        = serializers.ProfileFeedItemSerializer
+    queryset                = models.ProfileFeedItem.objects.all()
+    permission_classes      = (
+        permissions.UpdateOwnStatus,
+        # IsAuthenticatedOrReadOnly
+        IsAuthenticated
+    )
+
+    def perform_create(self, serializer):
+        """Set the user profile tothe logged in user"""
+        serializer.save(user_profile=self.request.user)
